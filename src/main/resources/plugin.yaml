@@ -1,0 +1,23 @@
+apiVersion: plugin.halo.run/v1alpha1
+kind: Plugin
+metadata:
+  name: PluginAList
+#  annotations:
+#    "store.halo.run/app-id": "app-KfOps"
+spec:
+  enabled: true
+  requires: ">=2.17.0"
+  author:
+    name: Halo
+    website: https://github.com/halo-dev
+  logo: logo.svg
+  settingName: plugin-alist-settings
+  configMapName: plugin-alist-configMap
+  homepage: https://github.com/halo-sigs/plugin-alist#readme
+  repo: https://github.com/halo-sigs/plugin-alist
+  issues: https://github.com/halo-sigs/plugin-alist/issues
+  displayName: "AList 存储库"
+  description: "支持创建 AList 类型的存储库"
+  license:
+    - name: "GPL-3.0"
+      url: "https://github.com/halo-sigs/plugin-alist/blob/main/LICENSE"
