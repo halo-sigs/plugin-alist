@@ -1,0 +1,28 @@
+apiVersion: storage.halo.run/v1alpha1
+kind: PolicyTemplate
+metadata:
+  name: alist
+spec:
+  displayName: AList 存储
+  settingName: alist-policy-template-setting
+---
+apiVersion: v1alpha1
+kind: Setting
+metadata:
+  name: alist-policy-template-setting
+spec:
+  forms:
+    - group: default
+      formSchema:
+        - $formkit: verificationForm
+          action: "/apis/s3os.halo.run/v1alpha1/policies/s3/validation"
+          label: AList 存储验证
+          children:
+            - $formkit: text
+              name: username
+              label: 用户名
+              validation: required
+            - $formkit: text
+              name: password
+              label: 密码
+              validation: required
