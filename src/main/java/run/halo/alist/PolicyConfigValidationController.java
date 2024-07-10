@@ -4,18 +4,11 @@ import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.core.io.DefaultResourceLoader;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.buffer.DataBuffer;
-import org.springframework.core.io.buffer.DataBufferUtils;
-import org.springframework.core.io.buffer.DefaultDataBufferFactory;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import run.halo.app.infra.utils.PathUtils;
 import run.halo.app.plugin.ApiVersion;
 
 /**
@@ -45,21 +38,20 @@ public class PolicyConfigValidationController {
                         return Flux.fromIterable(response.getData().getContent())
                             .filter(volume -> Objects.equals(volume.getMountPath(),
                                 properties.getPath()))
+                            .switchIfEmpty(Mono.error(new IllegalArgumentException(
+                                "AList: The mount path does not exist")))
                             .all(volume -> !volume.isDisabled())
-                            .thenEmpty(Mono.error(new IllegalArgumentException("AList: The mount address does not exist")));
+                            .flatMap(isValid -> {
+                                if (isValid) {
+                                    return Mono.empty();
+                                }
+                                return Mono.error(new IllegalArgumentException(
+                                    "AList: The storage is disabled"));
+                            });
                     }
                     return Mono.error(new IllegalArgumentException(
                         "AList: Wrong Username Or Password"));
                 }));
-    }
-
-    private Flux<DataBuffer> readImage() {
-        DefaultResourceLoader resourceLoader = new DefaultResourceLoader(this.getClass()
-            .getClassLoader());
-        String path = PathUtils.combinePath("validation.jpg");
-        String simplifyPath = StringUtils.cleanPath(path);
-        Resource resource = resourceLoader.getResource(simplifyPath);
-        return DataBufferUtils.read(resource, new DefaultDataBufferFactory(), 1024);
     }
 }
 
