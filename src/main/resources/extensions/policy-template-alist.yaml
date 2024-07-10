@@ -19,10 +19,17 @@ spec:
           label: AList 存储验证
           children:
             - $formkit: text
-              name: username
-              label: 用户名
+              name: site
+              label: 站点
               validation: required
+              help: AList 站点地址，如 https://alist.example.com
             - $formkit: text
-              name: password
-              label: 密码
+              name: path
+              label: 挂载路径
               validation: required
+              help: AList 存储中的挂载路径，必须以 / 开头，如 /aliyun
+            - $formkit: secret
+              name: secretName
+              required: true
+              label: secretName
+              help: key:username,password 填入你的 AList 站点用户名和密码
