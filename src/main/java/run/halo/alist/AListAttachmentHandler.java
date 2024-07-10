@@ -56,6 +56,7 @@ public class AListAttachmentHandler implements AttachmentHandler {
     public Mono<Attachment> upload(UploadContext uploadContext) {
         return Mono.just(uploadContext).filter(context -> this.shouldHandle(context.policy()))
             .map(UploadContext::configMap)
+            .map(this::getProperties)
             .flatMap(this::auth)
             .flatMap(token -> webClient.put()
                 .uri("/api/fs/put")
@@ -71,7 +72,7 @@ public class AListAttachmentHandler implements AttachmentHandler {
                     })
                 .flatMap(response -> {
                     if (response.getCode().equals("200")) {
-                        log.info("AList 上传文件{}成功", uploadContext.file().name());
+                        log.info("AList: Upload file {} successfully", uploadContext.file().name());
                         return Mono.just(token);
                     }
                     return Mono.error(new RuntimeException(response.getMessage()));
@@ -92,7 +93,7 @@ public class AListAttachmentHandler implements AttachmentHandler {
                     })
                 .flatMap(response -> {
                     if (response.getCode().equals("200")) {
-                        log.info("AList 获取文件{}成功", uploadContext.file().name());
+                        log.info("AList: Got file {} successfully", uploadContext.file().name());
                         return Mono.just(response);
                     }
                     return Mono.error(new RuntimeException(response.getMessage()));
@@ -119,10 +120,7 @@ public class AListAttachmentHandler implements AttachmentHandler {
             });
     }
 
-    private Mono<String> auth(ConfigMap configMap) {
-        if (properties == null) {
-            properties = getProperties(configMap);
-        }
+    public Mono<String> auth(AListProperties properties) {
         if (webClient == null) {
             webClient = WebClient.builder()
                 .baseUrl(properties.getSite())
@@ -165,7 +163,7 @@ public class AListAttachmentHandler implements AttachmentHandler {
                         });
             }).flatMap(response -> {
                 if (response.getCode().equals("200")) {
-                    log.info("AList 登录成功");
+                    log.info("AList: Login successfully");
                     return Mono.just(
                         tokenCache.get(secretName, k -> response.getData().getToken()));
                 }
@@ -183,6 +181,7 @@ public class AListAttachmentHandler implements AttachmentHandler {
     public Mono<Attachment> delete(DeleteContext deleteContext) {
         return Mono.just(deleteContext).filter(context -> this.shouldHandle(context.policy()))
             .map(DeleteContext::configMap)
+            .map(this::getProperties)
             .flatMap(this::auth)
             .flatMap(token -> webClient.post()
                 .uri("/api/fs/remove")
@@ -197,7 +196,7 @@ public class AListAttachmentHandler implements AttachmentHandler {
                     })
                 .flatMap(response -> {
                     if (response.getCode().equals("200")) {
-                        log.info("AList 删除文件{}成功",
+                        log.info("AList: Delete file {} successfully",
                             deleteContext.attachment().getSpec().getDisplayName());
                         return Mono.just(token);
                     }
@@ -210,29 +209,13 @@ public class AListAttachmentHandler implements AttachmentHandler {
     @Override
     public Mono<URI> getSharedURL(Attachment attachment, Policy policy, ConfigMap configMap,
         Duration ttl) {
-        return Mono.just(policy).filter(this::shouldHandle).flatMap(p -> auth(configMap))
-            .flatMap(token -> webClient.post()
-                .uri("/api/fs/get")
-                .header("Authorization", tokenCache.getIfPresent(properties.getSecretName()))
-                .body(Mono.just(
-                        AListGetFileInfoReq
-                            .builder()
-                            .path(properties.getPath() + "/" + attachment.getSpec().getDisplayName())
-                            .build()),
-                    AListGetFileInfoReq.class)
-                .retrieve()
-                .bodyToMono(
-                    new ParameterizedTypeReference<AListResult<AListGetFileInfoRes>>() {
-                    })
-                .map(response -> URI.create(UriUtils.encodePath(
-                    properties.getSite() + "/d" + properties.getPath() + "/"
-                        + response.getData().getName(),
-                    StandardCharsets.UTF_8))));
+        return getPermalink(attachment, policy, configMap);
     }
 
     @Override
     public Mono<URI> getPermalink(Attachment attachment, Policy policy, ConfigMap configMap) {
-        return Mono.just(policy).filter(this::shouldHandle).flatMap(p -> auth(configMap))
+        return Mono.just(policy).filter(this::shouldHandle)
+            .flatMap(p -> auth(getProperties(configMap)))
             .flatMap(token -> webClient.post()
                 .uri("/api/fs/get")
                 .header("Authorization", tokenCache.getIfPresent(properties.getSecretName()))
@@ -246,10 +229,17 @@ public class AListAttachmentHandler implements AttachmentHandler {
                 .bodyToMono(
                     new ParameterizedTypeReference<AListResult<AListGetFileInfoRes>>() {
                     })
+                .flatMap(response -> {
+                    if (response.getCode().equals("200")) {
+                        log.info("AList: Got file {} successfully", attachment.getSpec().getDisplayName());
+                        return Mono.just(response);
+                    }
+                    return Mono.error(new RuntimeException(response.getMessage()));
+                }))
                 .map(response -> URI.create(UriUtils.encodePath(
                     properties.getSite() + "/d" + properties.getPath() + "/"
                         + response.getData().getName(),
-                    StandardCharsets.UTF_8))));
+                    StandardCharsets.UTF_8)));
     }
 
     boolean shouldHandle(Policy policy) {
