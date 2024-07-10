@@ -8,9 +8,8 @@ spec:
   enabled: true
   requires: ">=2.17.0"
   author:
-    name: Halo
-    website: https://github.com/halo-dev
-  logo: logo.svg
+    name: Roozen
+    website: https://roozen.top
   settingName: plugin-alist-settings
   configMapName: plugin-alist-configMap
   homepage: https://github.com/halo-sigs/plugin-alist#readme
@@ -18,6 +17,7 @@ spec:
   issues: https://github.com/halo-sigs/plugin-alist/issues
   displayName: "AList 存储库"
   description: "支持创建 AList 类型的存储库"
+  logo: logo.svg
   license:
     - name: "GPL-3.0"
       url: "https://github.com/halo-sigs/plugin-alist/blob/main/LICENSE"
