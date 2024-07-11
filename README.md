@@ -2,6 +2,20 @@
 
 AList 存储库插件，支持创建 AList 类型的存储库
 
+## 使用方式
+
+首先[部署一个 AList 服务](https://alist.nn.ci/zh/guide/install/docker.html),进入后台管理，创建存储库
+![](docs/img/1.png)
+根据文档填写相关信息，注意这里的挂载路径
+![](docs/img/2.png)
+安装并启用此插件后，在 Halo 后台新建存储策略
+![](docs/img/3.png)
+选择 AList 存储
+![](docs/img/4.png)
+根据提示填写以下信息
+![](docs/img/5.png)
+![](docs/img/6.png)
+![](docs/img/7.png)
 ## 开发环境
 
 插件开发的详细文档请查阅：<https://docs.halo.run/developer-guide/plugin/introduction>
