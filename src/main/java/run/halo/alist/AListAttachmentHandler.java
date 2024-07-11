@@ -121,6 +121,7 @@ public class AListAttachmentHandler implements AttachmentHandler {
     }
 
     public Mono<String> auth(AListProperties properties) {
+        this.properties = properties;
         if (webClient == null) {
             webClient = WebClient.builder()
                 .baseUrl(properties.getSite())
