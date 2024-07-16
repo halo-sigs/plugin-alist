@@ -26,7 +26,7 @@ public class PolicyConfigValidationController {
     @PostMapping("/policies/alist/validation")
     public Mono<Void> validatePolicyConfig(@RequestBody AListProperties properties) {
         return handler.auth(properties)
-            .flatMap(token -> handler.webClient.get()
+            .flatMap(token -> handler.webClients.get(properties.getSite()).get()
                 .uri("/api/admin/storage/list")
                 .header("Authorization", token)
                 .retrieve()
@@ -38,19 +38,19 @@ public class PolicyConfigValidationController {
                         return Flux.fromIterable(response.getData().getContent())
                             .filter(volume -> Objects.equals(volume.getMountPath(),
                                 properties.getPath()))
-                            .switchIfEmpty(Mono.error(new IllegalArgumentException(
-                                "AList: The mount path does not exist")))
+                            .switchIfEmpty(Mono.error(new AListException(
+                                "The mount path does not exist")))
                             .all(volume -> !volume.isDisabled())
                             .flatMap(isValid -> {
                                 if (isValid) {
                                     return Mono.empty();
                                 }
-                                return Mono.error(new IllegalArgumentException(
-                                    "AList: The storage is disabled"));
+                                return Mono.error(new AListException(
+                                    "The storage is disabled"));
                             });
                     }
-                    return Mono.error(new IllegalArgumentException(
-                        "AList: Wrong Username Or Password"));
+                    return Mono.error(new AListException(
+                        "Wrong Username Or Password"));
                 }));
     }
 }

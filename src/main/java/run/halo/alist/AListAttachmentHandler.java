@@ -5,6 +5,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -45,8 +46,8 @@ public class AListAttachmentHandler implements AttachmentHandler {
     @Autowired
     ReactiveExtensionClient client;
 
-    WebClient webClient = null;
     AListProperties properties = null;
+    Map<String, WebClient> webClients = new HashMap<>();
 
     private final Cache<String, String> tokenCache = Caffeine.newBuilder()
         .expireAfterWrite(1, TimeUnit.DAYS)
@@ -54,11 +55,13 @@ public class AListAttachmentHandler implements AttachmentHandler {
 
     @Override
     public Mono<Attachment> upload(UploadContext uploadContext) {
-        return Mono.just(uploadContext).filter(context -> this.shouldHandle(context.policy()))
+        return Mono.just(uploadContext)
+            .filter(context -> this.shouldHandle(context.policy()))
             .map(UploadContext::configMap)
             .map(this::getProperties)
             .flatMap(this::auth)
-            .flatMap(token -> webClient.put()
+            .flatMap(token -> webClients.get(properties.getSite())
+                .put()
                 .uri("/api/fs/put")
                 .header("Authorization", token)
                 .header("File-Path", UriUtils.encodePath(
@@ -72,13 +75,15 @@ public class AListAttachmentHandler implements AttachmentHandler {
                     })
                 .flatMap(response -> {
                     if (response.getCode().equals("200")) {
-                        log.info("AList: Upload file {} successfully", uploadContext.file().name());
+                        log.info("[AList Info] :  Upload file {} successfully",
+                            uploadContext.file().name());
                         return Mono.just(token);
                     }
-                    return Mono.error(new RuntimeException(response.getMessage()));
+                    return Mono.error(new AListException(response.getMessage()));
                 })
             )
-            .flatMap(token -> webClient.post()
+            .flatMap(token -> webClients.get(properties.getSite())
+                .post()
                 .uri("/api/fs/get")
                 .header("Authorization", token)
                 .body(Mono.just(
@@ -93,10 +98,11 @@ public class AListAttachmentHandler implements AttachmentHandler {
                     })
                 .flatMap(response -> {
                     if (response.getCode().equals("200")) {
-                        log.info("AList: Got file {} successfully", uploadContext.file().name());
+                        log.info("[AList Info] :  Got file {} successfully",
+                            uploadContext.file().name());
                         return Mono.just(response);
                     }
-                    return Mono.error(new RuntimeException(response.getMessage()));
+                    return Mono.error(new AListException(response.getMessage()));
                 }))
             .map(response -> {
                 var metadata = new Metadata();
@@ -122,20 +128,19 @@ public class AListAttachmentHandler implements AttachmentHandler {
 
     public Mono<String> auth(AListProperties properties) {
         this.properties = properties;
-        if (webClient == null) {
-            webClient = WebClient.builder()
-                .baseUrl(properties.getSite())
-                .build();
-        }
+        WebClient webClient = webClients.computeIfAbsent(properties.getSite(),
+            k -> WebClient.builder()
+                .baseUrl(k)
+                .build());
 
         String secretName = properties.getSecretName();
         if (tokenCache.getIfPresent(secretName) != null) {
             return Mono.just(
-                Objects.requireNonNull(tokenCache.getIfPresent(secretName)));
+                Objects.requireNonNull(tokenCache.getIfPresent(properties.getTokenKey())));
         }
 
         return client.fetch(Secret.class, secretName)
-            .switchIfEmpty(Mono.error(new IllegalArgumentException(
+            .switchIfEmpty(Mono.error(new AListException(
                 "Secret " + secretName + " not found")))
             .flatMap(secret -> {
                 var stringData = secret.getStringData();
@@ -144,7 +149,7 @@ public class AListAttachmentHandler implements AttachmentHandler {
                 if (stringData == null
                     || !(stringData.containsKey(usernameKey) && stringData.containsKey(
                     passwordKey))) {
-                    return Mono.error(new IllegalArgumentException(
+                    return Mono.error(new AListException(
                         "Secret " + secretName
                             + " does not have username or password key"));
                 }
@@ -164,12 +169,12 @@ public class AListAttachmentHandler implements AttachmentHandler {
                         });
             }).flatMap(response -> {
                 if (response.getCode().equals("200")) {
-                    log.info("AList: Login successfully");
+                    log.info("[AList Info] :  Login successfully");
                     return Mono.just(
-                        tokenCache.get(secretName, k -> response.getData().getToken()));
+                        tokenCache.get(properties.getTokenKey(), k -> response.getData().getToken()));
                 }
-                return Mono.error(new IllegalArgumentException(
-                    "wrong Username Or Password"));
+                return Mono.error(new AListException(
+                    "Wrong Username Or Password"));
             });
     }
 
@@ -184,7 +189,8 @@ public class AListAttachmentHandler implements AttachmentHandler {
             .map(DeleteContext::configMap)
             .map(this::getProperties)
             .flatMap(this::auth)
-            .flatMap(token -> webClient.post()
+            .flatMap(token -> webClients.get(properties.getSite())
+                .post()
                 .uri("/api/fs/remove")
                 .header("Authorization", token)
                 .body(Mono.just(AListRemoveFileReq.builder()
@@ -197,11 +203,11 @@ public class AListAttachmentHandler implements AttachmentHandler {
                     })
                 .flatMap(response -> {
                     if (response.getCode().equals("200")) {
-                        log.info("AList: Delete file {} successfully",
+                        log.info("[AList Info] :  Delete file {} successfully",
                             deleteContext.attachment().getSpec().getDisplayName());
                         return Mono.just(token);
                     }
-                    return Mono.error(new RuntimeException(response.getMessage()));
+                    return Mono.error(new AListException(response.getMessage()));
                 })
             )
             .map(token -> deleteContext.attachment());
@@ -217,9 +223,10 @@ public class AListAttachmentHandler implements AttachmentHandler {
     public Mono<URI> getPermalink(Attachment attachment, Policy policy, ConfigMap configMap) {
         return Mono.just(policy).filter(this::shouldHandle)
             .flatMap(p -> auth(getProperties(configMap)))
-            .flatMap(token -> webClient.post()
+            .flatMap(token -> webClients.get(properties.getSite())
+                .post()
                 .uri("/api/fs/get")
-                .header("Authorization", tokenCache.getIfPresent(properties.getSecretName()))
+                .header("Authorization", tokenCache.getIfPresent(properties.getTokenKey()))
                 .body(Mono.just(
                         AListGetFileInfoReq
                             .builder()
@@ -232,15 +239,16 @@ public class AListAttachmentHandler implements AttachmentHandler {
                     })
                 .flatMap(response -> {
                     if (response.getCode().equals("200")) {
-                        log.info("AList: Got file {} successfully", attachment.getSpec().getDisplayName());
+                        log.info("[AList Info] :  Got file {} successfully",
+                            attachment.getSpec().getDisplayName());
                         return Mono.just(response);
                     }
-                    return Mono.error(new RuntimeException(response.getMessage()));
+                    return Mono.error(new AListException(response.getMessage()));
                 }))
-                .map(response -> URI.create(UriUtils.encodePath(
-                    properties.getSite() + "/d" + properties.getPath() + "/"
-                        + response.getData().getName(),
-                    StandardCharsets.UTF_8)));
+            .map(response -> URI.create(UriUtils.encodePath(
+                properties.getSite() + "/d" + properties.getPath() + "/"
+                    + response.getData().getName(),
+                StandardCharsets.UTF_8)));
     }
 
     boolean shouldHandle(Policy policy) {

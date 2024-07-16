@@ -4,6 +4,10 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 
 /**
  * @author <a href="https://roozen.top">Roozen</a>
@@ -21,4 +25,15 @@ public class AListProperties {
      * Secret name.
      */
     private String secretName;
+
+    public String getTokenKey(){
+        MessageDigest digest = null;
+        try {
+            digest = MessageDigest.getInstance("MD5");
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+        byte[] hash = digest.digest((site + secretName).getBytes(StandardCharsets.UTF_8));
+        return HexFormat.of().formatHex(hash);
+    }
 }
