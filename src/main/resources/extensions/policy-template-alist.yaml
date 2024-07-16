@@ -32,4 +32,5 @@ spec:
               name: secretName
               required: true
               label: secretName
-              help: key:username,password 填入你的 AList 站点用户名和密码
+              requiredKey: username
+              help: key:username,password 填入你的 AList 站点用户名和密码，修改配置后，需要重新验证来刷新缓存

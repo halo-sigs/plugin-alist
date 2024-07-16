@@ -60,27 +60,32 @@ public class AListAttachmentHandler implements AttachmentHandler {
             .map(UploadContext::configMap)
             .map(this::getProperties)
             .flatMap(this::auth)
-            .flatMap(token -> webClients.get(properties.getSite())
-                .put()
-                .uri("/api/fs/put")
-                .header("Authorization", token)
-                .header("File-Path", UriUtils.encodePath(
-                    properties.getPath() + "/" + uploadContext.file().name(),
-                    StandardCharsets.UTF_8))
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .body(uploadContext.file().content().cache(), DataBuffer.class)
-                .retrieve()
-                .bodyToMono(
-                    new ParameterizedTypeReference<AListResult<String>>() {
-                    })
-                .flatMap(response -> {
-                    if (response.getCode().equals("200")) {
-                        log.info("[AList Info] :  Upload file {} successfully",
-                            uploadContext.file().name());
-                        return Mono.just(token);
-                    }
-                    return Mono.error(new AListException(response.getMessage()));
-                })
+            .flatMap(token -> uploadContext.file()
+                .content()
+                .map(dataBuffer -> (long) dataBuffer.readableByteCount())
+                .reduce(Long::sum)
+                .flatMap(fileSize -> webClients.get(properties.getSite())
+                    .put()
+                    .uri("/api/fs/put")
+                    .header("Authorization", token)
+                    .header("File-Path", UriUtils.encodePath(
+                        properties.getPath() + "/" + uploadContext.file().name(),
+                        StandardCharsets.UTF_8))
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .contentLength(fileSize)
+                    .body(uploadContext.file().content().cache(), DataBuffer.class)
+                    .retrieve()
+                    .bodyToMono(
+                        new ParameterizedTypeReference<AListResult<String>>() {
+                        })
+                    .flatMap(response -> {
+                        if (response.getCode().equals("200")) {
+                            log.info("[AList Info] :  Upload file {} successfully",
+                                uploadContext.file().name());
+                            return Mono.just(token);
+                        }
+                        return Mono.error(new AListException(response.getMessage()));
+                    }))
             )
             .flatMap(token -> webClients.get(properties.getSite())
                 .post()
@@ -171,7 +176,8 @@ public class AListAttachmentHandler implements AttachmentHandler {
                 if (response.getCode().equals("200")) {
                     log.info("[AList Info] :  Login successfully");
                     return Mono.just(
-                        tokenCache.get(properties.getTokenKey(), k -> response.getData().getToken()));
+                        tokenCache.get(properties.getTokenKey(),
+                            k -> response.getData().getToken()));
                 }
                 return Mono.error(new AListException(
                     "Wrong Username Or Password"));
@@ -258,5 +264,10 @@ public class AListAttachmentHandler implements AttachmentHandler {
         }
         String templateName = policy.getSpec().getTemplateName();
         return "alist".equals(templateName);
+    }
+
+    public Mono<Void> removeTokenCache(AListProperties properties){
+        tokenCache.invalidate(properties.getTokenKey());
+        return Mono.empty();
     }
 }
