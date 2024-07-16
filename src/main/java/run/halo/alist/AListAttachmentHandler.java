@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.MediaType;
+import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriUtils;
@@ -55,37 +56,34 @@ public class AListAttachmentHandler implements AttachmentHandler {
 
     @Override
     public Mono<Attachment> upload(UploadContext uploadContext) {
+        FilePart file = uploadContext.file();
         return Mono.just(uploadContext)
             .filter(context -> this.shouldHandle(context.policy()))
             .map(UploadContext::configMap)
             .map(this::getProperties)
             .flatMap(this::auth)
-            .flatMap(token -> uploadContext.file()
-                .content()
-                .map(dataBuffer -> (long) dataBuffer.readableByteCount())
-                .reduce(Long::sum)
-                .flatMap(fileSize -> webClients.get(properties.getSite())
-                    .put()
-                    .uri("/api/fs/put")
-                    .header("Authorization", token)
-                    .header("File-Path", UriUtils.encodePath(
-                        properties.getPath() + "/" + uploadContext.file().name(),
-                        StandardCharsets.UTF_8))
-                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                    .contentLength(fileSize)
-                    .body(uploadContext.file().content().cache(), DataBuffer.class)
-                    .retrieve()
-                    .bodyToMono(
-                        new ParameterizedTypeReference<AListResult<String>>() {
-                        })
-                    .flatMap(response -> {
-                        if (response.getCode().equals("200")) {
-                            log.info("[AList Info] :  Upload file {} successfully",
-                                uploadContext.file().name());
-                            return Mono.just(token);
-                        }
-                        return Mono.error(new AListException(response.getMessage()));
-                    }))
+            .flatMap(token -> webClients.get(properties.getSite())
+                .put()
+                .uri("/api/fs/put")
+                .header("Authorization", token)
+                .header("File-Path", UriUtils.encodePath(
+                    properties.getPath() + "/" + file.name(),
+                    StandardCharsets.UTF_8))
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .contentLength(file.headers().getContentLength())
+                .body(file.content().cache(), DataBuffer.class)
+                .retrieve()
+                .bodyToMono(
+                    new ParameterizedTypeReference<AListResult<String>>() {
+                    })
+                .flatMap(response -> {
+                    if (response.getCode().equals("200")) {
+                        log.info("[AList Info] :  Upload file {} successfully",
+                            file.name());
+                        return Mono.just(token);
+                    }
+                    return Mono.error(new AListException(response.getMessage()));
+                })
             )
             .flatMap(token -> webClients.get(properties.getSite())
                 .post()
@@ -94,7 +92,7 @@ public class AListAttachmentHandler implements AttachmentHandler {
                 .body(Mono.just(
                         AListGetFileInfoReq
                             .builder()
-                            .path(properties.getPath() + "/" + uploadContext.file().name())
+                            .path(properties.getPath() + "/" + file.name())
                             .build()),
                     AListGetFileInfoReq.class)
                 .retrieve()
@@ -104,7 +102,7 @@ public class AListAttachmentHandler implements AttachmentHandler {
                 .flatMap(response -> {
                     if (response.getCode().equals("200")) {
                         log.info("[AList Info] :  Got file {} successfully",
-                            uploadContext.file().name());
+                            file.name());
                         return Mono.just(response);
                     }
                     return Mono.error(new AListException(response.getMessage()));
@@ -119,9 +117,9 @@ public class AListAttachmentHandler implements AttachmentHandler {
                                 + response.getData().getName(),
                             StandardCharsets.UTF_8)));
                 var spec = new Attachment.AttachmentSpec();
-                SimpleFilePart file = (SimpleFilePart) uploadContext.file();
-                spec.setDisplayName(file.filename());
-                spec.setMediaType(file.mediaType().toString());
+                SimpleFilePart simpleFilePart = (SimpleFilePart) file;
+                spec.setDisplayName(simpleFilePart.filename());
+                spec.setMediaType(simpleFilePart.mediaType().toString());
                 spec.setSize(response.getData().getSize());
 
                 var attachment = new Attachment();
@@ -266,7 +264,7 @@ public class AListAttachmentHandler implements AttachmentHandler {
         return "alist".equals(templateName);
     }
 
-    public Mono<Void> removeTokenCache(AListProperties properties){
+    public Mono<Void> removeTokenCache(AListProperties properties) {
         tokenCache.invalidate(properties.getTokenKey());
         return Mono.empty();
     }
