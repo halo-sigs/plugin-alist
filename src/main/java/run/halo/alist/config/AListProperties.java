@@ -1,4 +1,4 @@
-package run.halo.alist;
+package run.halo.alist.config;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

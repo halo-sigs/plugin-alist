@@ -1,4 +1,4 @@
-package run.halo.alist;
+package run.halo.alist.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

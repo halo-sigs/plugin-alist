@@ -1,4 +1,4 @@
-package run.halo.alist;
+package run.halo.alist.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.OffsetDateTime;

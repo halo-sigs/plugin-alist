@@ -1,4 +1,4 @@
-package run.halo.alist;
+package run.halo.alist.endpoint;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.pf4j.Extension;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +23,15 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriUtils;
 import reactor.core.publisher.Mono;
+import run.halo.alist.config.AListProperties;
+import run.halo.alist.dto.AListResult;
+import run.halo.alist.dto.request.AListGetFileInfoReq;
+import run.halo.alist.dto.request.AListLoginReq;
+import run.halo.alist.dto.request.AListRemoveFileReq;
+import run.halo.alist.dto.response.AListGetFileInfoRes;
+import run.halo.alist.dto.response.AListLoginRes;
+import run.halo.alist.exception.AListIllegalArgumentException;
+import run.halo.alist.exception.AListRequestErrorException;
 import run.halo.app.core.extension.attachment.Attachment;
 import run.halo.app.core.extension.attachment.Constant;
 import run.halo.app.core.extension.attachment.Policy;
@@ -36,8 +46,9 @@ import run.halo.app.infra.utils.JsonUtils;
 /**
  * AListAttachmentHandler
  *
- * @author： <a href="https://roozen.top">Roozen</a>
- * @date: 2024/7/3
+ * @author <a href="https://roozen.top">Roozen</a>
+ * @version 1.0
+ * 2024/7/3
  */
 @Slf4j
 @Extension
@@ -45,10 +56,12 @@ import run.halo.app.infra.utils.JsonUtils;
 public class AListAttachmentHandler implements AttachmentHandler {
 
     @Autowired
-    ReactiveExtensionClient client;
+    private ReactiveExtensionClient client;
 
-    AListProperties properties = null;
-    Map<String, WebClient> webClients = new HashMap<>();
+    private AListProperties properties = null;
+
+    @Getter
+    private final Map<String, WebClient> webClients = new HashMap<>();
 
     private final Cache<String, String> tokenCache = Caffeine.newBuilder()
         .expireAfterWrite(1, TimeUnit.DAYS)
@@ -62,28 +75,32 @@ public class AListAttachmentHandler implements AttachmentHandler {
             .map(UploadContext::configMap)
             .map(this::getProperties)
             .flatMap(this::auth)
-            .flatMap(token -> webClients.get(properties.getSite())
-                .put()
-                .uri("/api/fs/put")
-                .header("Authorization", token)
-                .header("File-Path", UriUtils.encodePath(
-                    properties.getPath() + "/" + file.name(),
-                    StandardCharsets.UTF_8))
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .contentLength(file.headers().getContentLength())
-                .body(file.content().cache(), DataBuffer.class)
-                .retrieve()
-                .bodyToMono(
-                    new ParameterizedTypeReference<AListResult<String>>() {
-                    })
-                .flatMap(response -> {
-                    if (response.getCode().equals("200")) {
-                        log.info("[AList Info] :  Upload file {} successfully",
-                            file.name());
-                        return Mono.just(token);
-                    }
-                    return Mono.error(new AListException(response.getMessage()));
-                })
+            .flatMap(token -> file.content()
+                .map(dataBuffer -> (long) dataBuffer.readableByteCount())
+                .reduce(Long::sum)
+                .flatMap(fileSize -> webClients.get(properties.getSite())
+                    .put()
+                    .uri("/api/fs/put")
+                    .header("Authorization", token)
+                    .header("File-Path", UriUtils.encodePath(
+                        properties.getPath() + "/" + file.name(),
+                        StandardCharsets.UTF_8))
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .contentLength(fileSize)
+                    // .contentLength(file.headers().getContentLength())
+                    .body(file.content(), DataBuffer.class)
+                    .retrieve()
+                    .bodyToMono(
+                        new ParameterizedTypeReference<AListResult<String>>() {
+                        })
+                    .flatMap(response -> {
+                        if (response.getCode().equals("200")) {
+                            log.info("[AList Info] :  Upload file {} successfully",
+                                file.name());
+                            return Mono.just(token);
+                        }
+                        return Mono.error(new AListRequestErrorException(response.getMessage()));
+                    }))
             )
             .flatMap(token -> webClients.get(properties.getSite())
                 .post()
@@ -105,7 +122,7 @@ public class AListAttachmentHandler implements AttachmentHandler {
                             file.name());
                         return Mono.just(response);
                     }
-                    return Mono.error(new AListException(response.getMessage()));
+                    return Mono.error(new AListRequestErrorException(response.getMessage()));
                 }))
             .map(response -> {
                 var metadata = new Metadata();
@@ -143,7 +160,7 @@ public class AListAttachmentHandler implements AttachmentHandler {
         }
 
         return client.fetch(Secret.class, secretName)
-            .switchIfEmpty(Mono.error(new AListException(
+            .switchIfEmpty(Mono.error(new AListIllegalArgumentException(
                 "Secret " + secretName + " not found")))
             .flatMap(secret -> {
                 var stringData = secret.getStringData();
@@ -152,7 +169,7 @@ public class AListAttachmentHandler implements AttachmentHandler {
                 if (stringData == null
                     || !(stringData.containsKey(usernameKey) && stringData.containsKey(
                     passwordKey))) {
-                    return Mono.error(new AListException(
+                    return Mono.error(new AListIllegalArgumentException(
                         "Secret " + secretName
                             + " does not have username or password key"));
                 }
@@ -177,7 +194,7 @@ public class AListAttachmentHandler implements AttachmentHandler {
                         tokenCache.get(properties.getTokenKey(),
                             k -> response.getData().getToken()));
                 }
-                return Mono.error(new AListException(
+                return Mono.error(new AListIllegalArgumentException(
                     "Wrong Username Or Password"));
             });
     }
@@ -211,7 +228,7 @@ public class AListAttachmentHandler implements AttachmentHandler {
                             deleteContext.attachment().getSpec().getDisplayName());
                         return Mono.just(token);
                     }
-                    return Mono.error(new AListException(response.getMessage()));
+                    return Mono.error(new AListRequestErrorException(response.getMessage()));
                 })
             )
             .map(token -> deleteContext.attachment());
@@ -247,7 +264,7 @@ public class AListAttachmentHandler implements AttachmentHandler {
                             attachment.getSpec().getDisplayName());
                         return Mono.just(response);
                     }
-                    return Mono.error(new AListException(response.getMessage()));
+                    return Mono.error(new AListRequestErrorException(response.getMessage()));
                 }))
             .map(response -> URI.create(UriUtils.encodePath(
                 properties.getSite() + "/d" + properties.getPath() + "/"
@@ -268,4 +285,5 @@ public class AListAttachmentHandler implements AttachmentHandler {
         tokenCache.invalidate(properties.getTokenKey());
         return Mono.empty();
     }
+
 }

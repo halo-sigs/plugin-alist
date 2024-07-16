@@ -1,4 +1,4 @@
-package run.halo.alist;
+package run.halo.alist.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -26,7 +26,7 @@ public class AListStorageListRes {
     @AllArgsConstructor
     @NoArgsConstructor
     @Builder
-    static class Volume {
+    public static class Volume {
         @JsonProperty("id")
         private int id;
 

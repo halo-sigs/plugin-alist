@@ -1,4 +1,4 @@
-package run.halo.alist;
+package run.halo.alist.dto.request;
 
 import lombok.Builder;
 import lombok.Data;
