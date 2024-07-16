@@ -1,6 +1,8 @@
 package run.halo.alist;
 
-public class AListException extends RuntimeException {
+import org.springframework.web.server.ServerWebInputException;
+
+public class AListException extends ServerWebInputException {
     public AListException(String message) {
         super("[AList Error] : " + message);
     }
