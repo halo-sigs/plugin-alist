@@ -2,6 +2,7 @@ package run.halo.alist.endpoint;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import io.netty.channel.ChannelOption;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -18,11 +19,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriUtils;
 import reactor.core.publisher.Mono;
+import reactor.netty.http.client.HttpClient;
 import run.halo.alist.config.AListProperties;
 import run.halo.alist.dto.AListResult;
 import run.halo.alist.dto.request.AListGetFileInfoReq;
@@ -149,12 +152,20 @@ public class AListAttachmentHandler implements AttachmentHandler {
     public Mono<String> auth(AListProperties properties) {
         this.properties = properties;
         WebClient webClient = webClients.computeIfAbsent(properties.getSite(),
-            k -> WebClient.builder()
-                .baseUrl(k)
-                .build());
+            k -> {
+                // 创建一个HttpClient实例，设置连接和读取超时时间
+                HttpClient httpClient = HttpClient.create()
+                    .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000) // 连接超时时间，单位毫秒
+                    .responseTimeout(Duration.ofMinutes(10)); // 响应超时时间
+                // 使用上面的HttpClient实例创建WebClient
+                return WebClient.builder()
+                    .baseUrl(properties.getSite())
+                    .clientConnector(new ReactorClientHttpConnector(httpClient))
+                    .build();
+            });
 
         String secretName = properties.getSecretName();
-        if (tokenCache.getIfPresent(secretName) != null) {
+        if (tokenCache.getIfPresent(properties.getTokenKey()) != null) {
             return Mono.just(
                 Objects.requireNonNull(tokenCache.getIfPresent(properties.getTokenKey())));
         }
