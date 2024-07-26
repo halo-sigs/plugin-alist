@@ -21,14 +21,14 @@ import run.halo.app.plugin.ApiVersion;
  * @version 1.0
  * 2024/7/10
  */
-@ApiVersion("alist.halo.run/v1alpha1")
+@ApiVersion("alist.storage.halo.run/v1alpha1")
 @RestController
 @RequiredArgsConstructor
 @Slf4j
 public class PolicyConfigValidationController {
     private final AListAttachmentHandler handler;
 
-    @PostMapping("/policies/alist/validation")
+    @PostMapping("/configs/-/verify")
     public Mono<Void> validatePolicyConfig(@RequestBody AListProperties properties) {
         return handler.removeTokenCache(properties)
             .then(
@@ -50,13 +50,10 @@ public class PolicyConfigValidationController {
                                     .switchIfEmpty(Mono.error(new AListIllegalArgumentException(
                                         "The mount path does not exist")))
                                     .all(volume -> !volume.isDisabled())
-                                    .flatMap(isValid -> {
-                                        if (isValid) {
-                                            return Mono.empty();
-                                        }
-                                        return Mono.error(new AListIllegalArgumentException(
-                                            "The storage is disabled"));
-                                    });
+                                    .filter(isValid -> isValid)
+                                    .switchIfEmpty(Mono.error(new AListIllegalArgumentException(
+                                        "The storage is disabled")))
+                                    .then();
                             }
                             return Mono.error(new AListIllegalArgumentException(
                                 "Wrong Username Or Password"));

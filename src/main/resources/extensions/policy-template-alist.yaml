@@ -15,7 +15,7 @@ spec:
     - group: default
       formSchema:
         - $formkit: verificationForm
-          action: "/apis/alist.halo.run/v1alpha1/policies/alist/validation"
+          action: "/apis/alist.storage.halo.run/v1alpha1/configs/-/verify"
           label: AList 存储验证
           children:
             - $formkit: text
