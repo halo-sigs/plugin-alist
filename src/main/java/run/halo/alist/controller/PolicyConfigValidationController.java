@@ -17,6 +17,8 @@ import run.halo.alist.exception.AListIllegalArgumentException;
 import run.halo.app.plugin.ApiVersion;
 
 /**
+ * 存储策略验证控制器
+ *
  * @author <a href="https://roozen.top">Roozen</a>
  * @version 1.0
  * 2024/7/10
