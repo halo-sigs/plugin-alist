@@ -16,6 +16,16 @@ AList 存储库插件，支持创建 AList 类型的存储库
 ![](docs/img/5.png)
 ![](docs/img/6.png)
 ![](docs/img/7.png)
+
+## 注意事项
+1. 插件需要依赖 AList 服务，请确保 AList 服务已经启动并配置正确
+2. 如果存储验证成功但是`大文件`上传失败，可能是反向代理的配置有问题，对于 nginx 将下方配置加入你的nginx配置中
+    ```
+    client_body_buffer_size 512k;
+    proxy_read_timeout 86400s;
+    client_max_body_size 0;
+    ```
+   ![](docs/img/8.png)
 ## 开发环境
 
 插件开发的详细文档请查阅：<https://docs.halo.run/developer-guide/plugin/introduction>
