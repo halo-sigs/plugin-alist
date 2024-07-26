@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import lombok.Getter;
@@ -265,7 +266,8 @@ public class AListAttachmentHandler implements AttachmentHandler {
                 }))
             .map(response -> UriComponentsBuilder.fromHttpUrl(properties.getSite())
                 .path("/d/{path}/{name}")
-                .queryParam("sign", response.getData().getSign())
+                .queryParamIfPresent("sign",
+                    Optional.ofNullable(response.getData().getSign()).filter(s -> !s.isEmpty()))
                 .buildAndExpand(
                     UriUtils.encodePath(properties.getPath(), StandardCharsets.UTF_8),
                     UriUtils.encodePath(response.getData().getName(), StandardCharsets.UTF_8)
