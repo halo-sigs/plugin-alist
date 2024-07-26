@@ -15,9 +15,9 @@ import java.util.concurrent.TimeUnit;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.pf4j.Extension;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.http.codec.multipart.FilePart;
@@ -58,17 +58,22 @@ import run.halo.app.infra.utils.JsonUtils;
 @Component
 public class AListAttachmentHandler implements AttachmentHandler {
 
-    @Autowired
-    private ReactiveExtensionClient client;
+    private final ReactiveExtensionClient client;
 
-    private AListProperties properties = null;
+    private AListProperties properties;
 
     @Getter
-    private final Map<String, WebClient> webClients = new HashMap<>();
+    private final Map<String, WebClient> webClients;
 
-    private final Cache<String, String> tokenCache = Caffeine.newBuilder()
-        .expireAfterWrite(1, TimeUnit.DAYS)
-        .build();
+    private final Cache<String, String> tokenCache;
+
+    public AListAttachmentHandler(ReactiveExtensionClient client) {
+        this.client = client;
+        this.webClients = new HashMap<>();
+        this.tokenCache = Caffeine.newBuilder()
+            .expireAfterWrite(1, TimeUnit.DAYS)
+            .build();
+    }
 
     @Override
     public Mono<Attachment> upload(UploadContext uploadContext) {
@@ -84,13 +89,12 @@ public class AListAttachmentHandler implements AttachmentHandler {
                 .flatMap(fileSize -> webClients.get(properties.getSite())
                     .put()
                     .uri("/api/fs/put")
-                    .header("Authorization", token)
+                    .header(HttpHeaders.AUTHORIZATION, token)
                     .header("File-Path", UriUtils.encodePath(
                         properties.getPath() + "/" + file.name(),
                         StandardCharsets.UTF_8))
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
                     .contentLength(fileSize)
-                    // .contentLength(file.headers().getContentLength())
                     .body(file.content(), DataBuffer.class)
                     .retrieve()
                     .bodyToMono(
@@ -108,7 +112,7 @@ public class AListAttachmentHandler implements AttachmentHandler {
             .flatMap(token -> webClients.get(properties.getSite())
                 .post()
                 .uri("/api/fs/get")
-                .header("Authorization", token)
+                .header(HttpHeaders.AUTHORIZATION, token)
                 .body(Mono.just(
                         AListGetFileInfoReq
                             .builder()
@@ -224,7 +228,7 @@ public class AListAttachmentHandler implements AttachmentHandler {
             .flatMap(token -> webClients.get(properties.getSite())
                 .post()
                 .uri("/api/fs/remove")
-                .header("Authorization", token)
+                .header(HttpHeaders.AUTHORIZATION, token)
                 .body(Mono.just(AListRemoveFileReq.builder()
                     .dir(properties.getPath())
                     .names(List.of(deleteContext.attachment().getSpec().getDisplayName()))
@@ -258,7 +262,8 @@ public class AListAttachmentHandler implements AttachmentHandler {
             .flatMap(token -> webClients.get(properties.getSite())
                 .post()
                 .uri("/api/fs/get")
-                .header("Authorization", tokenCache.getIfPresent(properties.getTokenKey()))
+                .header(HttpHeaders.AUTHORIZATION,
+                    tokenCache.getIfPresent(properties.getTokenKey()))
                 .body(Mono.just(
                         AListGetFileInfoReq
                             .builder()
