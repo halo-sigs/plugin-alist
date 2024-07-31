@@ -1,5 +1,6 @@
-package run.halo.starter;
+package run.halo.alist;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import run.halo.app.plugin.BasePlugin;
 import run.halo.app.plugin.PluginContext;
@@ -9,9 +10,11 @@ import run.halo.app.plugin.PluginContext;
  * <p>This class must be public and have a public constructor.</p>
  * <p>Only one main class extending {@link BasePlugin} is allowed per plugin.</p>
  *
- * @author guqing
- * @since 1.0.0
+ * @author <a href="https://roozen.top">Roozen</a>
+ * @version 1.0
+ * 2024/7/3
  */
+@Slf4j
 @Component
 public class AListPlugin extends BasePlugin {
 
@@ -21,16 +24,16 @@ public class AListPlugin extends BasePlugin {
 
     @Override
     public void start() {
-        System.out.println("插件启动成功！");
+        log.info("AList 插件启动成功！");
     }
 
     @Override
     public void stop() {
-        System.out.println("插件停止！");
+        log.info("AList 插件停止！");
     }
 
     @Override
     public void delete() {
-        System.out.println("插件被删除！");
+        log.info("AList 插件被删除！");
     }
 }

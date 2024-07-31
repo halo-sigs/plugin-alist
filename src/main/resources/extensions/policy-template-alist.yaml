@@ -15,14 +15,22 @@ spec:
     - group: default
       formSchema:
         - $formkit: verificationForm
-          action: "/apis/s3os.halo.run/v1alpha1/policies/s3/validation"
+          action: "/apis/alist.storage.halo.run/v1alpha1/configs/-/verify"
           label: AList 存储验证
           children:
             - $formkit: text
-              name: username
-              label: 用户名
+              name: site
+              label: 站点
               validation: required
+              help: AList 站点地址，如 https://alist.example.com
             - $formkit: text
-              name: password
-              label: 密码
+              name: path
+              label: 挂载路径
               validation: required
+              help: AList 存储中的挂载路径，必须以 / 开头，如 /aliyun
+            - $formkit: secret
+              name: secretName
+              required: true
+              label: secretName
+              requiredKey: username
+              help: key:username,password 填入你的 AList 站点用户名和密码，修改配置后，需要重新验证来刷新缓存
