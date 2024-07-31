@@ -1,9 +1,9 @@
 apiVersion: plugin.halo.run/v1alpha1
 kind: Plugin
 metadata:
-  name: PluginAList
-#  annotations:
-#    "store.halo.run/app-id": "app-KfOps"
+  name: alist-integration
+  annotations:
+    "store.halo.run/app-id": "app-wEGMV"
 spec:
   enabled: true
   requires: ">=2.17.0"
@@ -12,11 +12,11 @@ spec:
     website: https://github.com/halo-dev
   settingName: plugin-alist-settings
   configMapName: plugin-alist-configMap
-  homepage: https://github.com/halo-sigs/plugin-alist#readme
+  homepage: https://www.halo.run/store/apps/app-wEGMV
   repo: https://github.com/halo-sigs/plugin-alist
   issues: https://github.com/halo-sigs/plugin-alist/issues
   displayName: "AList 存储库"
-  description: "支持创建 AList 类型的存储库"
+  description: "支持创建 AList 类型的附件存储策略"
   logo: logo.svg
   license:
     - name: "GPL-3.0"
