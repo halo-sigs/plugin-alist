@@ -4,6 +4,7 @@ import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -39,7 +40,7 @@ public class PolicyConfigValidationController {
                         .get(properties.getSite())
                         .get()
                         .uri("/api/admin/storage/list")
-                        .header("Authorization", token)
+                        .header(HttpHeaders.AUTHORIZATION, token)
                         .retrieve()
                         .bodyToMono(
                             new ParameterizedTypeReference<AListResult<AListStorageListRes>>() {
@@ -56,6 +57,9 @@ public class PolicyConfigValidationController {
                                     .switchIfEmpty(Mono.error(new AListIllegalArgumentException(
                                         "The storage is disabled")))
                                     .then();
+                            } else if (response.getCode().equals("403")) {
+                                return Mono.error(new AListIllegalArgumentException(
+                                    "You are not an admin"));
                             }
                             return Mono.error(new AListIllegalArgumentException(
                                 "Wrong Username Or Password"));
