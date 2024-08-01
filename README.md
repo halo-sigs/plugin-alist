@@ -63,14 +63,6 @@ cd path/to/plugin-alist
 
 ```bash
 # macOS / Linux
-./gradlew pnpmInstall
-
-# Windows
-./gradlew.bat pnpmInstall
-```
-
-```bash
-# macOS / Linux
 ./gradlew haloServer
 
 # Windows
