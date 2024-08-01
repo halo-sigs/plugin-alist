@@ -14,7 +14,12 @@ AList 存储库插件，支持创建 AList 类型的存储库
 ![](docs/img/4.png)
 根据提示填写以下信息
 ![](docs/img/5.png)
+注意：这里建议填写 `ADMIN` 用户的用户名和密码，因为部分 AList 接口只有 `ADMIN` 用户才能访问，否则将验证失败
 ![](docs/img/6.png)
+如果你确信你的配置完全正确，并且你填写的非 `ADMIN` 用户至少拥有以下权限，尽管无法完成验证，但是并不影响使用
+![](docs/img/9.png)
+![](docs/img/10.png)
+`ADMIN` 用户可以正常验证
 ![](docs/img/7.png)
 
 ## 注意事项
@@ -26,6 +31,7 @@ AList 存储库插件，支持创建 AList 类型的存储库
     client_max_body_size 0;
     ```
    ![](docs/img/8.png)
+3. 修改用户状态后需要重新验证来刷新缓存，如：修改用户密码
 ## 开发环境
 
 插件开发的详细文档请查阅：<https://docs.halo.run/developer-guide/plugin/introduction>
