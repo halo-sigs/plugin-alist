@@ -26,6 +26,10 @@ public class AListProperties {
      */
     private String path;
     /**
+     * AList 基本路径.
+     */
+    private String basePath;
+    /**
      * Secret name.
      */
     private String secretName;

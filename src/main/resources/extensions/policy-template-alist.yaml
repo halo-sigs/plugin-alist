@@ -28,6 +28,10 @@ spec:
               label: 挂载路径
               validation: required
               help: AList 存储中的挂载路径，必须以 / 开头，如 /aliyun
+            - $formkit: text
+              name: basePath
+              label: 基本路径
+              help: 所填用户的基本路径，可在 AList 管理 -> 用户 查看，必须以 / 开头，如 /aliyun，为 / 时留空即可
             - $formkit: secret
               name: secretName
               required: true

@@ -265,12 +265,13 @@ public class AListAttachmentHandler implements AttachmentHandler {
                     return Mono.error(new AListRequestErrorException(response.getMessage()));
                 }))
             .map(response -> UriComponentsBuilder.fromHttpUrl(properties.getSite())
-                .path("/d/{path}/{name}")
+                .path("/d{path}{basePath}/{name}")
                 .queryParamIfPresent("sign",
                     Optional.ofNullable(response.getData().getSign()).filter(s -> !s.isEmpty()))
                 .buildAndExpand(
-                    UriUtils.encodePath(properties.getPath(), StandardCharsets.UTF_8),
-                    UriUtils.encodePath(response.getData().getName(), StandardCharsets.UTF_8)
+                    properties.getPath(),
+                    properties.getBasePath(),
+                    response.getData().getName()
                 )
                 .toUri());
     }
