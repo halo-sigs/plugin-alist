@@ -31,7 +31,7 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 halo {
-    version = '2.17'
+    version = '2.18'
     superAdminUsername = 'admin'
     superAdminPassword = 'admin'
     externalUrl = 'http://localhost:8090'
