@@ -46,7 +46,7 @@ public class PolicyConfigValidationController {
                             new ParameterizedTypeReference<AListResult<AListGetCurrentUserInfoRes>>() {
                             })
                         .flatMap(response -> {
-                            if (response.getCode().equals("401")){
+                            if (response.getCode().equals("401")) {
                                 return Mono.error(new AListIllegalArgumentException(
                                     "Current user is disabled"));
                             }
@@ -82,13 +82,13 @@ public class PolicyConfigValidationController {
                                     int permission = userInfo.getPermission();
                                     StringBuilder sb = new StringBuilder();
                                     if ((permission & 2) == 0) {
-                                        sb.append(" 无需密码访问权限");
+                                        sb.append("无需密码访问权限 ");
                                     }
                                     if ((permission & 8) == 0) {
-                                        sb.append(" 创建目录或上传权限 ");
+                                        sb.append("创建目录或上传权限 ");
                                     }
                                     if ((permission & 128) == 0) {
-                                        sb.append(" 删除权限 ");
+                                        sb.append("删除权限 ");
                                     }
                                     if (!sb.isEmpty()) {
                                         sb.append("未开启");
