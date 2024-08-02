@@ -46,15 +46,15 @@ public class PolicyConfigValidationController {
                             new ParameterizedTypeReference<AListResult<AListGetCurrentUserInfoRes>>() {
                             })
                         .flatMap(response -> {
+                            if (response.getCode().equals("401")){
+                                return Mono.error(new AListIllegalArgumentException(
+                                    "Current user is disabled"));
+                            }
                             if (!response.getCode().equals("200")) {
                                 return Mono.error(new AListIllegalArgumentException(
                                     "Wrong Username Or Password"));
                             }
                             AListGetCurrentUserInfoRes userInfo = response.getData();
-                            if (userInfo.isDisabled()) {
-                                return Mono.error(new AListIllegalArgumentException(
-                                    "User is disabled"));
-                            }
                             return handler.getWebClients()
                                 .get(properties.getSite())
                                 .post()
