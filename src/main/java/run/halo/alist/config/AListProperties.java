@@ -22,7 +22,7 @@ public class AListProperties {
      */
     private String site;
     /**
-     * AList 挂载路径.
+     * AList 基本路径下文件夹的路径.
      */
     private String path;
     /**

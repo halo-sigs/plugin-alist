@@ -26,8 +26,7 @@ spec:
             - $formkit: text
               name: path
               label: 挂载路径
-              validation: required
-              help: AList 存储中的挂载路径，必须以 / 开头，如 /aliyun
+              help: 所填用户基本路径(可在 AList 管理 -> 用户 查看)下文件夹的路径，必须以 / 开头，支持多级目录如 /picture/2024，则全路径为{基本路径}/picture/2024，上传文件时会自动创建不存在的目录，为 / 时留空即可
             - $formkit: secret
               name: secretName
               required: true

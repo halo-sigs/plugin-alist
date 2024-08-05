@@ -24,6 +24,7 @@ import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.web.util.UriUtils;
 import reactor.core.publisher.Mono;
@@ -33,6 +34,7 @@ import run.halo.alist.dto.AListResult;
 import run.halo.alist.dto.request.AListGetFileInfoReq;
 import run.halo.alist.dto.request.AListLoginReq;
 import run.halo.alist.dto.request.AListRemoveFileReq;
+import run.halo.alist.dto.response.AListGetCurrentUserInfoRes;
 import run.halo.alist.dto.response.AListGetFileInfoRes;
 import run.halo.alist.dto.response.AListLoginRes;
 import run.halo.alist.dto.response.AListUploadAsTaskRes;
@@ -117,11 +119,8 @@ public class AListAttachmentHandler implements AttachmentHandler {
                 var metadata = new Metadata();
                 metadata.setName(UUID.randomUUID().toString());
                 metadata.setAnnotations(
-                    Map.of(Constant.EXTERNAL_LINK_ANNO_KEY,
-                        UriUtils.encodePath(
-                            properties.getSite() + "/d" + properties.getPath() + "/"
-                                + file.name(),
-                            StandardCharsets.UTF_8)));
+                    Map.of(Constant.EXTERNAL_LINK_ANNO_KEY, ""));
+
                 var spec = new Attachment.AttachmentSpec();
                 SimpleFilePart simpleFilePart = (SimpleFilePart) file;
                 spec.setDisplayName(simpleFilePart.filename());
@@ -183,7 +182,9 @@ public class AListAttachmentHandler implements AttachmentHandler {
                     .retrieve()
                     .bodyToMono(
                         new ParameterizedTypeReference<AListResult<AListLoginRes>>() {
-                        });
+                        })
+                    .onErrorMap(WebClientRequestException.class,
+                        e -> new AListIllegalArgumentException(e.getMessage()));
             }).flatMap(response -> {
                 if (response.getCode().equals("200")) {
                     log.info("[AList Info] :  Login successfully");
@@ -198,7 +199,12 @@ public class AListAttachmentHandler implements AttachmentHandler {
 
     private AListProperties getProperties(ConfigMap configMap) {
         var settingJson = configMap.getData().getOrDefault("default", "{}");
-        return JsonUtils.jsonToObject(settingJson, AListProperties.class);
+        AListProperties aListProperties =
+            JsonUtils.jsonToObject(settingJson, AListProperties.class);
+        if (aListProperties.getPath().equals("/")) {
+            aListProperties.setPath("");
+        }
+        return aListProperties;
     }
 
     @Override
@@ -264,15 +270,25 @@ public class AListAttachmentHandler implements AttachmentHandler {
                     }
                     return Mono.error(new AListRequestErrorException(response.getMessage()));
                 }))
-            .map(response -> UriComponentsBuilder.fromHttpUrl(properties.getSite())
-                .path("/d/{path}/{name}")
-                .queryParamIfPresent("sign",
-                    Optional.ofNullable(response.getData().getSign()).filter(s -> !s.isEmpty()))
-                .buildAndExpand(
-                    UriUtils.encodePath(properties.getPath(), StandardCharsets.UTF_8),
-                    UriUtils.encodePath(response.getData().getName(), StandardCharsets.UTF_8)
-                )
-                .toUri());
+            .flatMap(response -> webClients.get(properties.getSite())
+                .get()
+                .uri("/api/me")
+                .header(HttpHeaders.AUTHORIZATION,
+                    tokenCache.getIfPresent(properties.getTokenKey()))
+                .retrieve()
+                .bodyToMono(
+                    new ParameterizedTypeReference<AListResult<AListGetCurrentUserInfoRes>>() {
+                    })
+                .map(res -> UriComponentsBuilder.fromHttpUrl(properties.getSite())
+                    .path("/d{basePath}{path}/{name}")
+                    .queryParamIfPresent("sign",
+                        Optional.ofNullable(response.getData().getSign()).filter(s -> !s.isEmpty()))
+                    .buildAndExpand(
+                        res.getData().getBasePath(),
+                        properties.getPath(),
+                        response.getData().getName()
+                    )
+                    .toUri()));
     }
 
     boolean shouldHandle(Policy policy) {

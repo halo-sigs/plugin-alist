@@ -5,16 +5,30 @@ AList 存储库插件，支持创建 AList 类型的存储库
 ## 使用方式
 
 首先[部署一个 AList 服务](https://alist.nn.ci/zh/guide/install/docker.html),进入后台管理，创建存储库
+
 ![](docs/img/1.png)
-根据文档填写相关信息，注意这里的挂载路径
+
+根据 [AList 文档](https://alist.nn.ci/zh/guide/) 填写相关信息
+
 ![](docs/img/2.png)
+
 安装并启用此插件后，在 Halo 后台新建存储策略
+
 ![](docs/img/3.png)
+
 选择 AList 存储
+
 ![](docs/img/4.png)
+
 根据提示填写以下信息
+
 ![](docs/img/5.png)
+
 ![](docs/img/6.png)
+
+你填写的用户应该至少拥有以下权限，这里的基本路径就是挂载路径的上级路径
+
+![](docs/img/9.png)
 ![](docs/img/7.png)
 
 ## 注意事项
@@ -26,6 +40,7 @@ AList 存储库插件，支持创建 AList 类型的存储库
     client_max_body_size 0;
     ```
    ![](docs/img/8.png)
+3. 修改用户状态后需要重新验证来刷新缓存，如：修改用户密码
 ## 开发环境
 
 插件开发的详细文档请查阅：<https://docs.halo.run/developer-guide/plugin/introduction>
@@ -54,14 +69,6 @@ cd path/to/plugin-alist
 ### 运行方式 1（推荐）
 
 > 此方式需要本地安装 Docker
-
-```bash
-# macOS / Linux
-./gradlew pnpmInstall
-
-# Windows
-./gradlew.bat pnpmInstall
-```
 
 ```bash
 # macOS / Linux

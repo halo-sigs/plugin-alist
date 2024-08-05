@@ -1,18 +1,19 @@
 package run.halo.alist.controller;
 
-import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import run.halo.alist.endpoint.AListAttachmentHandler;
 import run.halo.alist.config.AListProperties;
 import run.halo.alist.dto.AListResult;
-import run.halo.alist.dto.response.AListStorageListRes;
+import run.halo.alist.dto.request.AListGetFileInfoReq;
+import run.halo.alist.dto.response.AListGetCurrentUserInfoRes;
+import run.halo.alist.dto.response.AListGetFileInfoRes;
+import run.halo.alist.endpoint.AListAttachmentHandler;
 import run.halo.alist.exception.AListIllegalArgumentException;
 import run.halo.app.plugin.ApiVersion;
 
@@ -38,28 +39,68 @@ public class PolicyConfigValidationController {
                     .flatMap(token -> handler.getWebClients()
                         .get(properties.getSite())
                         .get()
-                        .uri("/api/admin/storage/list")
-                        .header("Authorization", token)
+                        .uri("/api/me")
+                        .header(HttpHeaders.AUTHORIZATION, token)
                         .retrieve()
                         .bodyToMono(
-                            new ParameterizedTypeReference<AListResult<AListStorageListRes>>() {
+                            new ParameterizedTypeReference<AListResult<AListGetCurrentUserInfoRes>>() {
                             })
                         .flatMap(response -> {
-                            if (response.getCode().equals("200")) {
-                                return Flux.fromIterable(response.getData().getContent())
-                                    .filter(volume -> Objects.equals(volume.getMountPath(),
-                                        properties.getPath()))
-                                    .switchIfEmpty(Mono.error(new AListIllegalArgumentException(
-                                        "The mount path does not exist")))
-                                    .all(volume -> !volume.isDisabled())
-                                    .filter(isValid -> isValid)
-                                    .switchIfEmpty(Mono.error(new AListIllegalArgumentException(
-                                        "The storage is disabled")))
-                                    .then();
+                            if (response.getCode().equals("401")) {
+                                return Mono.error(new AListIllegalArgumentException(
+                                    "Current user is disabled"));
                             }
-                            return Mono.error(new AListIllegalArgumentException(
-                                "Wrong Username Or Password"));
-                        }))
+                            if (!response.getCode().equals("200")) {
+                                return Mono.error(new AListIllegalArgumentException(
+                                    "Wrong Username Or Password"));
+                            }
+                            AListGetCurrentUserInfoRes userInfo = response.getData();
+                            return handler.getWebClients()
+                                .get(properties.getSite())
+                                .post()
+                                .uri("/api/fs/get")
+                                .header(HttpHeaders.AUTHORIZATION, token)
+                                .body(Mono.just(AListGetFileInfoReq.builder()
+                                        .path("/")
+                                        .build()),
+                                    AListGetFileInfoReq.class)
+                                .retrieve()
+                                .bodyToMono(
+                                    new ParameterizedTypeReference<AListResult<AListGetFileInfoRes>>() {
+                                    })
+                                .flatMap(res -> {
+                                    // 验证当前基本路径是否可用
+                                    if (!res.getCode().equals("200")) {
+                                        return Mono.error(
+                                            new AListIllegalArgumentException(res.getMessage()));
+                                    }
+                                    // 管理员用户拥有所有权限
+                                    if (userInfo.getRole() == 2) {
+                                        return Mono.empty();
+                                    }
+                                    // 普通用户验证权限
+                                    int permission = userInfo.getPermission();
+                                    StringBuilder sb = new StringBuilder();
+                                    if ((permission & 2) == 0) {
+                                        sb.append("无需密码访问权限 ");
+                                    }
+                                    if ((permission & 8) == 0) {
+                                        sb.append("创建目录或上传权限 ");
+                                    }
+                                    if ((permission & 128) == 0) {
+                                        sb.append("删除权限 ");
+                                    }
+                                    if (!sb.isEmpty()) {
+                                        sb.append("未开启");
+                                        return Mono.error(
+                                            new AListIllegalArgumentException(sb.toString()));
+                                    }
+                                    return Mono.empty();
+                                });
+
+                        })
+
+                    )
             );
     }
 }
