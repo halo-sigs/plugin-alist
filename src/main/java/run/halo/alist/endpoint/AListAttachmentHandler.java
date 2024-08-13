@@ -44,7 +44,6 @@ import run.halo.app.core.extension.attachment.Attachment;
 import run.halo.app.core.extension.attachment.Constant;
 import run.halo.app.core.extension.attachment.Policy;
 import run.halo.app.core.extension.attachment.endpoint.AttachmentHandler;
-import run.halo.app.core.extension.attachment.endpoint.SimpleFilePart;
 import run.halo.app.extension.ConfigMap;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
@@ -122,9 +121,10 @@ public class AListAttachmentHandler implements AttachmentHandler {
                     Map.of(Constant.EXTERNAL_LINK_ANNO_KEY, ""));
 
                 var spec = new Attachment.AttachmentSpec();
-                SimpleFilePart simpleFilePart = (SimpleFilePart) file;
-                spec.setDisplayName(simpleFilePart.filename());
-                spec.setMediaType(simpleFilePart.mediaType().toString());
+                spec.setDisplayName(file.filename());
+                Optional.ofNullable(file.headers().getContentType())
+                    .map(Objects::toString)
+                    .ifPresent(spec::setMediaType);
                 spec.setSize(fileSize);
 
                 var attachment = new Attachment();
