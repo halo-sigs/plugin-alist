@@ -196,22 +196,21 @@ public class AListAttachmentHandler implements AttachmentHandler {
             .flatMap(context -> {
                 var properties = getProperties(context.configMap());
                 var attachment = context.attachment();
-                var filePath = Optional.ofNullable(attachment.getMetadata().getAnnotations())
-                    .map(annotations -> annotations.get(FILE_PATH_ANNO))
-                    .orElse(null);
-                if (StringUtils.isBlank(filePath)) {
-                    return Mono.error(new IllegalArgumentException(
-                        "Invalid AList attachment: Missing file path annotation")
-                    );
-                }
-
                 var deleteUri = fromHttpUrl(properties.getSite().toString())
                     .path("/api/fs/remove")
                     .toUriString();
+                var rawFilePath = Optional.ofNullable(attachment.getMetadata().getAnnotations())
+                    .map(annotations -> annotations.get(FILE_PATH_ANNO))
+                    .filter(StringUtils::isNotBlank)
+                    // For backward compatibility
+                    .orElseGet(() -> UriComponentsBuilder.fromPath(properties.getPath())
+                        .pathSegment(attachment.getSpec().getDisplayName())
+                        .build()
+                        .toString()
+                    );
                 var body = AListRemoveFileReq.builder()
-                    .names(List.of(filePath))
+                    .names(List.of(rawFilePath))
                     .build();
-
                 return getToken(properties)
                     .flatMap(token -> webClient.post().uri(deleteUri)
                         .header(HttpHeaders.AUTHORIZATION, token)
@@ -243,17 +242,17 @@ public class AListAttachmentHandler implements AttachmentHandler {
             .filter(this::shouldHandle)
             .map(p -> getProperties(configMap))
             .flatMap(properties -> {
-                var filePath = Optional.ofNullable(attachment.getMetadata().getAnnotations())
+                var rawFilePath = Optional.ofNullable(attachment.getMetadata().getAnnotations())
                     .map(annotations -> annotations.get(FILE_PATH_ANNO))
                     .filter(StringUtils::isNotBlank)
-                    .orElse(null);
-                if (filePath == null) {
-                    return Mono.error(new IllegalArgumentException(
-                        "Invalid AList attachment: Missing file path annotation")
+                    // For backward compatibility
+                    .orElseGet(() -> UriComponentsBuilder.fromPath(properties.getPath())
+                        .pathSegment(attachment.getSpec().getDisplayName())
+                        .build()
+                        .toString()
                     );
-                }
                 return getToken(properties)
-                    .flatMap(token -> getFile(token, filePath, properties, false))
+                    .flatMap(token -> getFile(token, rawFilePath, properties, false))
                     .map(AListGetFileInfoRes::getRawUrl)
                     .map(URI::create);
             });
