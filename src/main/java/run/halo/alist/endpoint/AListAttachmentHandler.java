@@ -279,7 +279,9 @@ public class AListAttachmentHandler implements AttachmentHandler {
                 if (!Objects.equals(OK.value(), result.getCode())) {
                     if (ignoreNotFound
                         && Objects.equals(INTERNAL_SERVER_ERROR.value(), result.getCode())
-                        && "object not found".equals(result.getMessage())) {
+                        // According to https://alist.nn.ci/guide/api/fs.html, we have no better
+                        // way to determine whether the file exists
+                        && StringUtils.endsWith(result.getMessage(), "object not found")) {
                         return Mono.empty();
                     }
                     return Mono.error(new ServerWebInputException(
