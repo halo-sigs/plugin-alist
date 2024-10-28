@@ -220,6 +220,14 @@ public class AListAttachmentHandler implements AttachmentHandler {
                         })
                         .flatMap(result -> {
                             if (!Objects.equals(OK.value(), result.getCode())) {
+                                // According to https://alist.nn.ci/guide/api/fs.html, we have no
+                                // better way to detect whether the storage is not found
+                                if (StringUtils.startsWith(
+                                    result.getMessage(), "failed get storage: storage not found"
+                                )) {
+                                    // ignore error: storage not found
+                                    return Mono.just(attachment);
+                                }
                                 return Mono.error(new ServerWebInputException(
                                     "Failed to delete file: " + result.getMessage())
                                 );
