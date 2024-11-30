@@ -267,13 +267,13 @@ public class AListAttachmentHandler implements AttachmentHandler {
                     .flatMap(tuple2 -> {
                         var token = tuple2.getT1();
                         var fileInfo = tuple2.getT2();
-                        var meUri = fromUriString(
+                        var getMeUri = fromUriString(
                                 properties.getSite().toString())
                             .path("/api/me")
                             .toUriString();
 
                         return webClient.get()
-                            .uri(meUri)
+                            .uri(getMeUri)
                             .header(HttpHeaders.AUTHORIZATION, token)
                             .retrieve()
                             .bodyToMono(

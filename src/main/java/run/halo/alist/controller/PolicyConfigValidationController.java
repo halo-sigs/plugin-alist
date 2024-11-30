@@ -42,7 +42,7 @@ public class PolicyConfigValidationController {
         // check if the current user has permissions
         return handler.getToken(properties)
             .flatMap(token -> {
-                var getMeUri = UriComponentsBuilder.fromHttpUrl(properties.getSite().toString())
+                var getMeUri = UriComponentsBuilder.fromUriString(properties.getSite().toString())
                     .path("/api/me")
                     .toUriString();
                 return handler.getWebClient().get().uri(getMeUri)
