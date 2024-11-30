@@ -2,7 +2,7 @@ package run.halo.alist.endpoint;
 
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.OK;
-import static org.springframework.web.util.UriComponentsBuilder.fromHttpUrl;
+import static org.springframework.web.util.UriComponentsBuilder.fromUriString;
 
 import io.netty.channel.ChannelOption;
 import java.net.URI;
@@ -31,6 +31,7 @@ import run.halo.alist.dto.AListResult;
 import run.halo.alist.dto.request.AListGetFileInfoReq;
 import run.halo.alist.dto.request.AListLoginReq;
 import run.halo.alist.dto.request.AListRemoveFileReq;
+import run.halo.alist.dto.response.AListGetCurrentUserInfoRes;
 import run.halo.alist.dto.response.AListGetFileInfoRes;
 import run.halo.alist.dto.response.AListLoginRes;
 import run.halo.app.core.extension.attachment.Attachment;
@@ -84,7 +85,8 @@ public class AListAttachmentHandler implements AttachmentHandler {
                 return Mono.zip(sizeOfContent, getToken(properties)).flatMap(tuple2 -> {
                     var contentLength = tuple2.getT1();
                     var token = tuple2.getT2();
-                    var uploadUri = fromHttpUrl(properties.getSite().toString())
+                    var uploadUri = fromUriString(
+                            properties.getSite().toString())
                         .path("/api/fs/put")
                         .build()
                         .toUri();
@@ -164,7 +166,7 @@ public class AListAttachmentHandler implements AttachmentHandler {
             })
             .flatMap(loginBody -> {
                 var site = properties.getSite();
-                var loginUri = fromHttpUrl(site.toString())
+                var loginUri = fromUriString(site.toString())
                     .path("/api/auth/login")
                     .build()
                     .toUri();
@@ -196,7 +198,7 @@ public class AListAttachmentHandler implements AttachmentHandler {
             .flatMap(context -> {
                 var properties = getProperties(context.configMap());
                 var attachment = context.attachment();
-                var deleteUri = fromHttpUrl(properties.getSite().toString())
+                var deleteUri = fromUriString(properties.getSite().toString())
                     .path("/api/fs/remove")
                     .toUriString();
                 var rawFilePath = Optional.ofNullable(attachment.getMetadata().getAnnotations())
@@ -260,9 +262,36 @@ public class AListAttachmentHandler implements AttachmentHandler {
                         .toString()
                     );
                 return getToken(properties)
-                    .flatMap(token -> getFile(token, rawFilePath, properties, false))
-                    .map(AListGetFileInfoRes::getRawUrl)
-                    .map(URI::create);
+                    .flatMap(token -> Mono.zip(Mono.just(token),
+                        getFile(token, rawFilePath, properties, false)))
+                    .flatMap(tuple2 -> {
+                        var token = tuple2.getT1();
+                        var fileInfo = tuple2.getT2();
+                        var meUri = fromUriString(
+                                properties.getSite().toString())
+                            .path("/api/me")
+                            .toUriString();
+
+                        return webClient.get()
+                            .uri(meUri)
+                            .header(HttpHeaders.AUTHORIZATION, token)
+                            .retrieve()
+                            .bodyToMono(
+                                new ParameterizedTypeReference<AListResult<AListGetCurrentUserInfoRes>>() {
+                                })
+                            .map(userInfoRes -> fromUriString(
+                                    properties.getSite().toString())
+                                .path("/d{basePath}{path}/{name}")
+                                .queryParamIfPresent("sign",
+                                    Optional.ofNullable(fileInfo.getSign())
+                                        .filter(s -> !s.isEmpty()))
+                                .buildAndExpand(
+                                    userInfoRes.getData().getBasePath(),
+                                    properties.getPath(),
+                                    fileInfo.getName()
+                                )
+                                .toUri());
+                    });
             });
     }
 
@@ -273,7 +302,7 @@ public class AListAttachmentHandler implements AttachmentHandler {
         var body = AListGetFileInfoReq.builder()
             .path(filePath)
             .build();
-        var fsGetUri = fromHttpUrl(properties.getSite().toString())
+        var fsGetUri = fromUriString(properties.getSite().toString())
             .path("/api/fs/get")
             .toUriString();
         return webClient.post().uri(fsGetUri)
