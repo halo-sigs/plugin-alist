@@ -287,7 +287,7 @@ public class AListAttachmentHandler implements AttachmentHandler {
                                         .filter(s -> !s.isEmpty()))
                                 .buildAndExpand(
                                     userInfoRes.getData().getBasePath(),
-                                    properties.getPath(),
+                                    "/".equals(properties.getPath())? "" : properties.getPath(),
                                     fileInfo.getName()
                                 )
                                 .toUri());
