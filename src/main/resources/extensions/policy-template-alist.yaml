@@ -29,6 +29,11 @@ spec:
               help: 所填用户基本路径(可在 AList 管理 -> 用户 查看)下文件夹的路径，必须以 / 开头，支持多级目录如 /picture/2024，则全路径为{基本路径}/picture/2024，上传文件时会自动创建不存在的目录，留空表示基本路径根目录 /
             - $formkit: secret
               name: secretName
-              required: true
-              label: secretName
+              label: 用户名密码
+              validation: required
+              required-keys:
+                - key: username
+                  help: AList 站点用户名
+                - key: password
+                  help: AList 站点密码
               help: 需要创建一个包含 key 为 username、password 的密钥，分别填入你的 AList 站点用户名和密码
