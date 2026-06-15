@@ -27,9 +27,9 @@ public class AListProperties {
     private URL site;
 
     /**
-     * 附件访问前缀.
+     * 外部访问链接.
      */
-    private URL attachmentUrlPrefix;
+    private URL externalUrl;
 
     /**
      * AList 基本路径下文件夹的路径.

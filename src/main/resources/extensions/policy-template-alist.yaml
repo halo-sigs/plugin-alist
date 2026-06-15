@@ -24,9 +24,9 @@ spec:
               validation: required
               help: AList 站点地址，如 https://alist.example.com
             - $formkit: text
-              name: attachmentUrlPrefix
-              label: 附件访问前缀
-              help: 附件访问链接前缀，将基于此前缀拼接挂载路径和文件名，如 https://alist.example.com/d/base-path，留空时默认为 {站点}/d{基本路径}
+              name: externalUrl
+              label: 外部访问链接
+              help: AList 外部访问链接，如设置为 https://alist.example.com/d/base 时，文件外部访问地址为 https://alist.example.com/d/base/{挂载路径}/{文件名}，留空时默认为 {站点}/d{基本路径}
             - $formkit: text
               name: path
               label: 挂载路径

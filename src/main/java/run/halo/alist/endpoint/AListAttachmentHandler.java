@@ -280,7 +280,7 @@ public class AListAttachmentHandler implements AttachmentHandler {
                                 new ParameterizedTypeReference<AListResult<AListGetCurrentUserInfoRes>>() {
                                 })
                             .map(userInfoRes -> fromUriString(
-                                    getAttachmentUrlPrefix(properties, userInfoRes.getData()))
+                                    getExternalUrl(properties, userInfoRes.getData()))
                                 .path("{path}/{name}")
                                 .queryParamIfPresent("sign",
                                     Optional.ofNullable(fileInfo.getSign())
@@ -294,10 +294,10 @@ public class AListAttachmentHandler implements AttachmentHandler {
             });
     }
 
-    private String getAttachmentUrlPrefix(AListProperties properties,
+    private String getExternalUrl(AListProperties properties,
         AListGetCurrentUserInfoRes userInfoRes) {
-        return properties.getAttachmentUrlPrefix() != null
-            ? properties.getAttachmentUrlPrefix().toString()
+        return properties.getExternalUrl() != null
+            ? properties.getExternalUrl().toString()
             : fromUriString(properties.getSite().toString())
                 .path("/d{basePath}")
                 .buildAndExpand(userInfoRes.getBasePath())
