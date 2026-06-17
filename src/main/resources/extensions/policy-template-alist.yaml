@@ -25,8 +25,8 @@ spec:
               help: AList 站点地址，如 https://alist.example.com
             - $formkit: text
               name: externalUrl
-              label: 外部访问链接
-              help: AList 外部访问链接，如设置为 https://alist.example.com/d/base 时，文件外部访问地址为 https://alist.example.com/d/base/{挂载路径}/{文件名}，留空时默认为 {站点}/d{基本路径}
+              label: 附件访问前缀
+              help: 附件外部访问地址前缀。填写后将替换默认外部访问地址中的 {站点}/d{基本路径} 部分；例如设置为 https://file.example.com/example 时，外部访问地址为 https://file.example.com/example{挂载路径}/{文件名}。留空时默认为 {站点}/d{基本路径}
             - $formkit: text
               name: path
               label: 挂载路径

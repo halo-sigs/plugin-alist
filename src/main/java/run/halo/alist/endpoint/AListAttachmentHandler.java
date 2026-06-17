@@ -296,12 +296,13 @@ public class AListAttachmentHandler implements AttachmentHandler {
 
     private String getExternalUrl(AListProperties properties,
         AListGetCurrentUserInfoRes userInfoRes) {
-        return properties.getExternalUrl() != null
+        String base = properties.getExternalUrl() != null
             ? properties.getExternalUrl().toString()
             : fromUriString(properties.getSite().toString())
                 .path("/d{basePath}")
                 .buildAndExpand(userInfoRes.getBasePath())
                 .toUriString();
+        return StringUtils.removeEnd(base, "/");
     }
 
     private Mono<AListGetFileInfoRes> getFile(String token,
