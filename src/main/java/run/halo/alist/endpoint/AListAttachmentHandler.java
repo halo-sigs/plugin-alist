@@ -280,19 +280,29 @@ public class AListAttachmentHandler implements AttachmentHandler {
                                 new ParameterizedTypeReference<AListResult<AListGetCurrentUserInfoRes>>() {
                                 })
                             .map(userInfoRes -> fromUriString(
-                                    properties.getSite().toString())
-                                .path("/d{basePath}{path}/{name}")
+                                    getExternalUrl(properties, userInfoRes.getData()))
+                                .path("{path}/{name}")
                                 .queryParamIfPresent("sign",
                                     Optional.ofNullable(fileInfo.getSign())
                                         .filter(s -> !s.isEmpty()))
                                 .buildAndExpand(
-                                    userInfoRes.getData().getBasePath(),
                                     "/".equals(properties.getPath())? "" : properties.getPath(),
                                     fileInfo.getName()
                                 )
                                 .toUri());
                     });
             });
+    }
+
+    private String getExternalUrl(AListProperties properties,
+        AListGetCurrentUserInfoRes userInfoRes) {
+        String base = properties.getExternalUrl() != null
+            ? properties.getExternalUrl().toString()
+            : fromUriString(properties.getSite().toString())
+                .path("/d{basePath}")
+                .buildAndExpand(userInfoRes.getBasePath())
+                .toUriString();
+        return StringUtils.removeEnd(base, "/");
     }
 
     private Mono<AListGetFileInfoRes> getFile(String token,
