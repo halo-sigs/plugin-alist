@@ -1,11 +1,15 @@
 plugins {
     id 'java'
-    id "io.freefair.lombok" version "8.0.1"
-    id "run.halo.plugin.devtools" version "0.0.9"
+    id "io.freefair.lombok" version "8.13"
+    id "run.halo.plugin.devtools" version "0.8.0"
 }
 
 group 'run.halo.alist'
-sourceCompatibility = JavaVersion.VERSION_17
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
 
 repositories {
     mavenCentral()
@@ -24,7 +28,8 @@ test {
 }
 
 tasks.withType(JavaCompile).configureEach {
-    options.encoding = "UTF-8"
+    options.release = 21
+    options.encoding = 'UTF-8'
 }
 
 halo {
