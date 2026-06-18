@@ -6,7 +6,6 @@ plugins {
 
 group 'run.halo.alist'
 java {
-    sourceCompatibility = JavaVersion.VERSION_17
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
     }
